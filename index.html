@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Audio Level Meter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #282c34;
+            color: #fff;
+            text-align: center;
+        }
+        #meter-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 50px;
+        }
+        .meter {
+            width: 20px;
+            height: 200px;
+            background: linear-gradient(to top, red, yellow, green);
+            border: 1px solid #fff;
+        }
+        .meter-inner {
+            width: 100%;
+            height: 0;
+            transition: height 0.05s ease-out;
+        }
+        input[type="file"] {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Audio Level Meter</h1>
+    
+    <!-- Audio controls -->
+    <input type="file" id="file-input" accept="audio/*" />
+    <br />
+    <audio id="audio-player" controls></audio>
+
+    <div id="meter-container">
+        <div class="meter">
+            <div class="meter-inner" id="left-meter"></div>
+        </div>
+        <div class="meter">
+            <div class="meter-inner" id="right-meter"></div>
+        </div>
+    </div>
+
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256; // Controlando el tamaño del análisis
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const audioPlayer = document.getElementById('audio-player');
+        const fileInput = document.getElementById('file-input');
+
+        // Detecta si se carga un archivo de audio
+        fileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                audioPlayer.src = fileURL;
+                audioPlayer.play();
+                startAudioMetering(audioPlayer);
+            }
+        });
+
+        // Inicia la medición del audio
+        function startAudioMetering(audioElement) {
+            const source = audioContext.createMediaElementSource(audioElement);
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            updateMeter();
+        }
+
+        // Función para actualizar las barras de nivel
+        function updateMeter() {
+            analyser.getByteFrequencyData(dataArray);
+
+            // Calculando los niveles promedio de los canales izquierdo y derecho
+            const leftLevel = dataArray.slice(0, bufferLength / 2).reduce((a, b) => a + b, 0) / (bufferLength / 2);
+            const rightLevel = dataArray.slice(bufferLength / 2).reduce((a, b) => a + b, 0) / (bufferLength / 2);
+
+            // Actualizando las alturas de las barras
+            document.getElementById('left-meter').style.height = `${Math.min(leftLevel, 200)}px`;
+            document.getElementById('right-meter').style.height = `${Math.min(rightLevel, 200)}px`;
+
+            requestAnimationFrame(updateMeter);
+        }
+    </script>
+</body>
+</html>
